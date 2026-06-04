@@ -1,0 +1,405 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>R4DS Coach — core loop</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,900&family=Newsreader:ital,opsz@0,6..72;1,6..72&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --paper:#f4efe6;
+    --paper-2:#ece4d6;
+    --ink:#23201a;
+    --ink-soft:#5a544a;
+    --line:#d8cdb8;
+    --kakapo:#3f6b3a;       /* the parrot on the cover */
+    --kakapo-deep:#2c4d29;
+    --amber:#b6741f;        /* hints */
+    --amber-soft:#f0e3cc;
+    --red:#9c3b2e;
+    --shadow: 0 1px 0 #fff8, 0 12px 30px -18px #2320200f;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    background:
+      radial-gradient(120% 80% at 90% -10%, #fbf7ee 0%, transparent 55%),
+      var(--paper);
+    color:var(--ink);
+    font-family:"Newsreader",Georgia,serif;
+    font-size:18px;
+    line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+  }
+  /* subtle paper grain */
+  body::before{
+    content:"";position:fixed;inset:0;pointer-events:none;opacity:.4;z-index:0;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+  }
+  .wrap{max-width:880px;margin:0 auto;padding:40px 22px 90px;position:relative;z-index:1}
+
+  header{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:6px}
+  .mark{
+    font-family:"Fraunces",serif;font-weight:900;font-size:34px;letter-spacing:-.02em;
+    color:var(--kakapo-deep);line-height:1;
+  }
+  .mark em{font-style:italic;color:var(--amber)}
+  .tagline{font-style:italic;color:var(--ink-soft);font-size:16px}
+  .rule{height:1px;background:linear-gradient(90deg,var(--line),transparent);margin:18px 0 26px}
+
+  .status{display:flex;gap:10px;flex-wrap:wrap;font-family:"JetBrains Mono",monospace;font-size:12px;margin-bottom:24px}
+  .chip{
+    display:inline-flex;align-items:center;gap:7px;background:var(--paper-2);
+    border:1px solid var(--line);border-radius:999px;padding:5px 12px;color:var(--ink-soft);
+  }
+  .dot{width:8px;height:8px;border-radius:50%;background:#bbada0;flex:none}
+  .dot.work{background:var(--amber);animation:pulse 1s infinite}
+  .dot.ok{background:var(--kakapo)}
+  .dot.bad{background:var(--red)}
+  @keyframes pulse{50%{opacity:.3}}
+
+  .card{
+    background:var(--paper-2);border:1px solid var(--line);border-radius:14px;
+    padding:22px 24px;box-shadow:var(--shadow);margin-bottom:22px;
+  }
+  .kicker{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.18em;
+    text-transform:uppercase;color:var(--amber);margin:0 0 8px}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:24px;margin:0 0 10px;letter-spacing:-.01em}
+  .prompt p{margin:0 0 10px}
+  code.inline{font-family:"JetBrains Mono",monospace;font-size:.85em;background:#fff6;
+    border:1px solid var(--line);padding:1px 6px;border-radius:5px}
+
+  .editor-shell{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fffaf1}
+  .editor-bar{display:flex;align-items:center;justify-content:space-between;
+    background:var(--ink);color:#e9e2d2;padding:7px 14px;font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.08em}
+  .editor-bar .dots{display:flex;gap:6px}
+  .editor-bar .dots i{width:10px;height:10px;border-radius:50%;background:#5a544a;display:block}
+  textarea{
+    width:100%;border:0;outline:0;resize:vertical;min-height:150px;
+    font-family:"JetBrains Mono",monospace;font-size:14.5px;line-height:1.6;
+    padding:16px;background:transparent;color:#2a261d;tab-size:2;
+  }
+  .setup-note{font-family:"JetBrains Mono",monospace;font-size:11.5px;color:var(--ink-soft);
+    padding:8px 14px;border-top:1px dashed var(--line);background:#fdf6ea}
+
+  .actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:16px;align-items:center}
+  button{
+    font-family:"Fraunces",serif;font-size:16px;font-weight:600;cursor:pointer;
+    border-radius:10px;padding:10px 20px;border:1px solid transparent;transition:.15s transform,.15s box-shadow,.15s background;
+  }
+  button:active{transform:translateY(1px)}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  .b-run{background:var(--kakapo);color:#f6f3e9;box-shadow:0 6px 16px -10px var(--kakapo-deep)}
+  .b-run:hover:not(:disabled){background:var(--kakapo-deep)}
+  .b-hint{background:transparent;color:var(--amber);border-color:var(--amber)}
+  .b-hint:hover:not(:disabled){background:var(--amber-soft)}
+  .b-check{background:var(--ink);color:#f0ead9}
+  .b-check:hover:not(:disabled){background:#000}
+  .attempts{font-family:"JetBrains Mono",monospace;font-size:12px;color:var(--ink-soft);margin-left:auto}
+
+  .console{margin-top:16px;border-radius:10px;background:#1c1a15;color:#d8d2c2;
+    font-family:"JetBrains Mono",monospace;font-size:13.5px;line-height:1.55;
+    padding:14px 16px;white-space:pre-wrap;min-height:46px;border:1px solid #000}
+  .console:empty::before{content:"output appears here after you run.";color:#6b655a;font-style:italic}
+  .console .err{color:#e8896f}
+  .console .ok{color:#9ac98e}
+
+  .hint{border-left:3px solid var(--amber);background:#fbf3e3;border-radius:0 10px 10px 0;
+    padding:14px 18px;margin-top:14px;animation:rise .25s ease}
+  .hint .lvl{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--amber);margin-bottom:5px;display:flex;justify-content:space-between}
+  .hint p{margin:0 0 8px}
+  .hint pre{background:#1c1a15;color:#d8d2c2;padding:12px;border-radius:8px;overflow:auto;
+    font-family:"JetBrains Mono",monospace;font-size:13px;margin:8px 0 0}
+  .feedback{border-left:3px solid var(--kakapo);background:#eef3e8}
+  .feedback .lvl{color:var(--kakapo)}
+  @keyframes rise{from{opacity:0;transform:translateY(6px)}}
+
+  .ladder{display:flex;gap:5px;margin-top:4px}
+  .ladder i{height:4px;flex:1;border-radius:2px;background:var(--line)}
+  .ladder i.on{background:var(--amber)}
+
+  footer{font-size:14px;color:var(--ink-soft);font-style:italic;text-align:center;margin-top:30px;line-height:1.5}
+  a{color:var(--kakapo-deep)}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="mark">R4DS&nbsp;<em>Coach</em></div>
+    <div class="tagline">— the core loop: a real R sandbox + a tutor that makes you think first</div>
+  </header>
+  <div class="rule"></div>
+
+  <div class="status">
+    <span class="chip"><span id="r-dot" class="dot work"></span><span id="r-status">booting R (WebAssembly)…</span></span>
+    <span class="chip"><span id="d-dot" class="dot"></span><span id="d-status">dplyr: idle</span></span>
+    <span class="chip"><span class="dot ok"></span>Claude: tiered hints live</span>
+  </div>
+
+  <div class="card">
+    <p class="kicker">Chapter 3 · Data transformation</p>
+    <h2>Heaviest species first</h2>
+    <div class="prompt">
+      <p>A small <code class="inline">penguins</code> data frame has been created for you (run the code to peek at it). Your task:</p>
+      <p><strong>For each <code class="inline">species</code>, compute the mean <code class="inline">body_mass_g</code>, then sort so the heaviest species is on top.</strong></p>
+      <p style="font-size:15px;color:var(--ink-soft)">Solve it however you like — base R works now, and <code class="inline">dplyr</code> is loading in the background if you'd rather use the pipe. Stuck? The hint button gives you a little, then a little more.</p>
+    </div>
+
+    <div class="editor-shell">
+      <div class="editor-bar"><span class="dots"><i></i><i></i><i></i></span><span>exercise.R</span></div>
+      <textarea id="code" spellcheck="false"># peek first — then transform
+head(penguins)
+
+# your answer below:
+</textarea>
+      <div class="setup-note"># prepended for you each run:  penguins &lt;- data.frame(species=…, body_mass_g=…, flipper_length_mm=…)</div>
+    </div>
+
+    <div class="actions">
+      <button class="b-run" id="run" disabled>▷ Run</button>
+      <button class="b-hint" id="hint">Need a hint</button>
+      <button class="b-check" id="check">Check my answer</button>
+      <span class="attempts" id="attempts">0 runs</span>
+    </div>
+    <div class="ladder" id="ladder" title="hint level"><i></i><i></i><i></i><i></i></div>
+
+    <div class="console" id="out"></div>
+    <div id="coach"></div>
+  </div>
+
+  <footer>
+    Prototype of the loop from the system sketch. R runs entirely in your browser via
+    <a href="https://docs.r-wasm.org/webr/latest/" target="_blank" rel="noopener">WebR</a>;
+    hints are generated live and deliberately withhold the full solution until you've tried.<br>
+    The book itself lives at <a href="https://r4ds.hadley.nz/" target="_blank" rel="noopener">r4ds.hadley.nz</a>.
+  </footer>
+</div>
+
+<script type="module">
+  /* ---------- elements ---------- */
+  const $ = id => document.getElementById(id);
+  const codeEl=$("code"), outEl=$("out"), coachEl=$("coach");
+  const runBtn=$("run"), hintBtn=$("hint"), checkBtn=$("check");
+  const rDot=$("r-dot"), rStatus=$("r-status"), dDot=$("d-dot"), dStatus=$("d-status");
+  const attemptsEl=$("attempts"), ladder=$("ladder");
+
+  /* ---------- learner state (in-memory only) ---------- */
+  let attempts = 0;       // number of Run clicks
+  let hintTier = 0;       // 0..4
+  let lastOutput = "";    // captured output of most recent run
+  let dplyrReady = false;
+  let webR = null;
+
+  const SETUP = `penguins <- data.frame(
+  species = c("Adelie","Adelie","Adelie","Gentoo","Gentoo","Chinstrap","Chinstrap","Gentoo","Adelie","Chinstrap"),
+  body_mass_g = c(3750,3800,3250,5000,5150,3500,3700,4900,3900,3650),
+  flipper_length_mm = c(181,186,195,210,215,192,196,212,190,193),
+  stringsAsFactors = FALSE
+)\n`;
+
+  const EXERCISE = "For each species in the `penguins` data frame, compute the mean of body_mass_g, then sort the result so the species with the highest mean body mass appears first. (Expected: Gentoo highest, then Adelie, then Chinstrap.)";
+
+  /* ---------- editor niceties ---------- */
+  codeEl.addEventListener("keydown", e=>{
+    if(e.key==="Tab"){e.preventDefault();
+      const s=codeEl.selectionStart, en=codeEl.selectionEnd;
+      codeEl.value=codeEl.value.slice(0,s)+"  "+codeEl.value.slice(en);
+      codeEl.selectionStart=codeEl.selectionEnd=s+2;
+    }
+  });
+
+  function setAttempts(){attemptsEl.textContent = attempts+(attempts===1?" run":" runs");}
+  function paintLadder(){[...ladder.children].forEach((b,i)=> b.classList.toggle("on", i<hintTier));}
+
+  /* ---------- boot WebR ---------- */
+  (async()=>{
+    try{
+      const mod = await import("https://cdn.jsdelivr.net/npm/webr@0.5.4/dist/webr.mjs");
+      const { WebR, ChannelType } = mod;
+      webR = new WebR({ channelType: ChannelType.PostMessage });
+      await webR.init();
+      rDot.className="dot ok"; rStatus.textContent="R ready — runs in your browser";
+      runBtn.disabled=false;
+      // background dplyr install — non-blocking, base R already works
+      dDot.className="dot work"; dStatus.textContent="dplyr: installing…";
+      try{
+        await webR.installPackages(["dplyr"]);
+        dplyrReady=true; dDot.className="dot ok"; dStatus.textContent="dplyr: ready";
+      }catch(err){
+        dDot.className="dot bad"; dStatus.textContent="dplyr: unavailable (use base R)";
+      }
+    }catch(err){
+      rDot.className="dot bad";
+      rStatus.textContent="R runtime blocked in this sandbox — hints still work";
+      runBtn.disabled=false; // let them still 'run' to get the explanation
+      webR="blocked";
+    }
+  })();
+
+  /* ---------- run R ---------- */
+  async function runR(){
+    attempts++; setAttempts();
+    outEl.innerHTML="";
+    if(webR==="blocked" || !webR){
+      outEl.innerHTML='<span class="err">The in-browser R engine could not load in this preview '+
+        '(the artifact sandbox blocked the WebAssembly download). The hint engine below is fully live — '+
+        'and when this is deployed on a normal page, WebR runs every chunk inline.</span>';
+      lastOutput="(runtime unavailable)";
+      return;
+    }
+    outEl.textContent="running…";
+    const full = SETUP + "\n" + codeEl.value;
+    const shelter = await new webR.Shelter();
+    try{
+      const res = await shelter.captureR(full, {withAutoprint:true, captureStreams:true, captureConditions:false});
+      let text = res.output.map(o=>o.data).join("\n");
+      if(!text.trim()) text="(ran with no printed output)";
+      lastOutput = text;
+      outEl.innerHTML="";
+      res.output.forEach(o=>{
+        const span=document.createElement("span");
+        if(o.type==="stderr") span.className="err";
+        span.textContent=o.data+"\n";
+        outEl.appendChild(span);
+      });
+      if(!res.output.length) outEl.textContent="(ran with no printed output)";
+    }catch(err){
+      lastOutput = "ERROR: "+(err.message||err);
+      outEl.innerHTML='<span class="err">'+escapeHtml(String(err.message||err))+'</span>';
+    }finally{
+      shelter.purge();
+    }
+  }
+
+  /* ---------- Claude API helper ---------- */
+  async function askClaude(system, user){
+    const r = await fetch("https://api.anthropic.com/v1/messages",{
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({
+        model:"claude-sonnet-4-20250514", max_tokens:1000,
+        system, messages:[{role:"user", content:user}]
+      })
+    });
+    const data = await r.json();
+    return (data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("\n").trim();
+  }
+
+  /* ---------- tiered hints (the pedagogical heart) ---------- */
+  const TIER_BRIEF = {
+    1:"a single conceptual nudge — name the *kind* of operation needed, no functions, no code.",
+    2:"point to the specific tools/verbs (e.g. which dplyr verbs, or which base-R functions) and the order to apply them — still NO complete code.",
+    3:"a code skeleton with the key parts left as blanks/comments for the learner to fill — not a runnable answer.",
+    4:"the full, runnable, idiomatic solution WITH a short explanation of each step."
+  };
+
+  async function getHint(){
+    hintBtn.disabled=true;
+    // gate: don't escalate to the full answer until they've actually tried running
+    let target = Math.min(hintTier+1, 4);
+    if(target===4 && attempts<2){ target=3; }
+    hintTier = target; paintLadder();
+
+    const note = document.createElement("div");
+    note.className="hint";
+    note.innerHTML='<div class="lvl"><span>hint · level '+target+' of 4</span><span>thinking…</span></div><p>…</p>';
+    coachEl.prepend(note);
+
+    const system =
+`You are a Socratic R tutor for a self-learner working through "R for Data Science" (tidyverse). 
+Your single most important rule: do NOT do the thinking for them. 
+Give exactly ONE hint at the requested level and nothing beyond it.
+Level meaning -> ${TIER_BRIEF[target]}
+Be warm, concise (2-4 sentences max, plus a code block ONLY if the level allows it). 
+Prefer tidyverse idioms but accept base R. Never scold. End levels 1-3 by inviting them to try running it.`;
+
+    const user =
+`EXERCISE: ${EXERCISE}
+
+LEARNER'S CURRENT CODE:
+\`\`\`r
+${codeEl.value}
+\`\`\`
+
+THEIR LAST RUN OUTPUT:
+${lastOutput || "(they haven't run anything yet)"}
+
+dplyr available: ${dplyrReady ? "yes" : "no (suggest base R like aggregate()/order() if you reference tools)"}.
+Give the level ${target} hint now.`;
+
+    try{
+      const ans = await askClaude(system,user);
+      note.innerHTML = '<div class="lvl"><span>hint · level '+target+' of 4</span><span>'+
+        (target<4?'try it, then ask again for more':'full solution')+'</span></div>'+ mdToHtml(ans);
+    }catch(err){
+      note.innerHTML='<div class="lvl"><span>hint · level '+target+'</span></div><p class="err">Could not reach the hint service: '+escapeHtml(String(err.message||err))+'</p>';
+    }finally{
+      hintBtn.disabled=false;
+      if(hintTier>=4) hintBtn.textContent="Solution shown";
+      else hintBtn.textContent="A little more help";
+    }
+  }
+
+  /* ---------- check answer (idiomatic feedback, not a giveaway) ---------- */
+  async function checkAnswer(){
+    if(lastOutput===""){ await runR(); }
+    checkBtn.disabled=true;
+    const note=document.createElement("div");
+    note.className="hint feedback";
+    note.innerHTML='<div class="lvl"><span>feedback</span><span>checking…</span></div><p>…</p>';
+    coachEl.prepend(note);
+
+    const unlocked = hintTier>=4;
+    const system =
+`You grade a self-learner's R answer for an "R for Data Science" exercise.
+Judge two things: (1) is the OUTPUT correct? (2) is the code idiomatic/tidy?
+Give honest, specific, encouraging feedback in 2-4 sentences. Mention if they used base R where dplyr would be cleaner, or vice-versa, but treat both as valid if correct.
+${unlocked ? "They have already unlocked the full solution, so you may show corrected code if helpful."
+           : "IMPORTANT: if their answer is WRONG, do NOT give them the corrected code — give one pointed nudge toward the fix and suggest the hint button. Only confirm + praise if it's correct."}
+Start with a clear verdict word: CORRECT, CLOSE, or NOT YET.`;
+
+    const user =
+`EXERCISE: ${EXERCISE}
+
+LEARNER CODE:
+\`\`\`r
+${codeEl.value}
+\`\`\`
+
+CAPTURED OUTPUT:
+${lastOutput}
+
+Expected: a per-species mean of body_mass_g, sorted descending (Gentoo ~4762, Adelie ~3675, Chinstrap ~3617). Give your feedback.`;
+
+    try{
+      const ans=await askClaude(system,user);
+      note.innerHTML='<div class="lvl"><span>feedback</span></div>'+mdToHtml(ans);
+    }catch(err){
+      note.innerHTML='<div class="lvl"><span>feedback</span></div><p class="err">Could not reach the feedback service: '+escapeHtml(String(err.message||err))+'</p>';
+    }finally{
+      checkBtn.disabled=false;
+    }
+  }
+
+  /* ---------- tiny markdown (code fences + paragraphs) ---------- */
+  function escapeHtml(s){return s.replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));}
+  function mdToHtml(md){
+    const parts = md.split(/```(?:r|R)?\n?/);
+    let html="", code=false;
+    for(const p of parts){
+      if(code){ html+="<pre>"+escapeHtml(p.replace(/\n$/,""))+"</pre>"; }
+      else{
+        p.split(/\n{2,}/).forEach(par=>{
+          const t=par.trim(); if(!t)return;
+          html+="<p>"+escapeHtml(t).replace(/`([^`]+)`/g,'<code class="inline">$1</code>')+"</p>";
+        });
+      }
+      code=!code;
+    }
+    return html||"<p>"+escapeHtml(md)+"</p>";
+  }
+
+  runBtn.addEventListener("click", runR);
+  hintBtn.addEventListener("click", getHint);
+  checkBtn.addEventListener("click", checkAnswer);
+  setAttempts(); paintLadder();
+</script>

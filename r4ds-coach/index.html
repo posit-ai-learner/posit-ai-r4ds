@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>R4DS Coach</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,900&family=Newsreader:ital,opsz@0,6..72;1,6..72&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/src/styles.css" />
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="mark">R4DS&nbsp;<em>Coach</em></div>
+      <div class="tagline">— a real R sandbox + a tutor that makes you think first</div>
+    </header>
+    <div class="rule"></div>
+
+    <div class="status">
+      <span class="chip"><span id="r-dot" class="dot work"></span><span id="r-status">booting R (WebAssembly)…</span></span>
+      <span class="chip"><span id="d-dot" class="dot"></span><span id="d-status">dplyr: idle</span></span>
+      <span class="chip"><span class="dot ok"></span>Claude: tiered hints</span>
+    </div>
+
+    <div class="card">
+      <p class="kicker" id="ex-kicker">Chapter · …</p>
+      <h2 id="ex-title">…</h2>
+      <div class="prompt" id="ex-prompt"></div>
+
+      <div class="editor-shell">
+        <div class="editor-bar"><span class="dots"><i></i><i></i><i></i></span><span>exercise.R</span></div>
+        <textarea id="code" spellcheck="false"></textarea>
+        <div class="setup-note" id="setup-note"></div>
+      </div>
+
+      <div class="actions">
+        <button class="b-run" id="run" disabled>▷ Run</button>
+        <button class="b-hint" id="hint">Need a hint</button>
+        <button class="b-check" id="check">Check my answer</button>
+        <span class="attempts" id="attempts">0 runs</span>
+      </div>
+      <div class="ladder" id="ladder" title="hint level"><i></i><i></i><i></i><i></i></div>
+
+      <div class="console" id="out"></div>
+      <div id="coach"></div>
+    </div>
+
+    <footer>
+      R runs in your browser via WebR. Hints are generated live and withhold the
+      full solution until you've tried. The book lives at
+      <a href="https://r4ds.hadley.nz/" target="_blank" rel="noopener">r4ds.hadley.nz</a>.
+    </footer>
+  </div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
